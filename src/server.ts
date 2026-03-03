@@ -107,7 +107,7 @@ function waitForSSE(timeoutMs = 15000): Promise<void> {
     const waiter = () => { clearTimeout(timer); resolve(); };
     const timer = setTimeout(() => {
       sseWaiters = sseWaiters.filter(fn => fn !== waiter);
-      reject(new Error('No browser connected within 15s'));
+      reject(new Error('No browser connected within 15s. Is Google Chrome installed?'));
     }, timeoutMs);
     sseWaiters.push(waiter);
   });
@@ -209,7 +209,7 @@ app.post('/ui', async (req: Request, res: Response) => {
     result = await new Promise<ServerResponse>((resolve, reject) => {
       const timer = setTimeout(() => {
         pendingResolve = null;
-        reject(new Error('UI timed out waiting for user response'));
+        reject(new Error('UI timed out after 5 minutes waiting for a response'));
       }, UI_TIMEOUT_MS);
       pendingResolve = (value) => { clearTimeout(timer); resolve(value); };
       sseRes!.write(`data: ${JSON.stringify(payload)}\n\n`);

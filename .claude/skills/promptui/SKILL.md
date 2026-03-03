@@ -9,7 +9,7 @@ Use this skill whenever you need the user to interact visually — choose betwee
 
 ## How it works
 
-Write Markdown, pipe it to `promptui`. Result comes back as plain text on stdout. No server management — everything is automatic.
+Write a Markdown file, run `promptui <file>`, get the result on stdout.
 
 ```bash
 cat > /tmp/prompt.md << 'PROMPT'
@@ -20,18 +20,14 @@ cat > /tmp/prompt.md << 'PROMPT'
 PROMPT
 
 CHOICE=$(promptui /tmp/prompt.md)
+# $CHOICE is now "Option A" or "Option B"
 ```
 
-Or inline:
-```bash
-CHOICE=$(echo '# Pick the best layout
-- Option A
-- Option B' | promptui -)
-```
+A browser window opens automatically, the user picks, the result prints to stdout, done. Paths in the markdown (images, `root`, `dest`) can be relative to the .md file — they're resolved automatically.
 
 ## Markdown format
 
-Optional YAML frontmatter between `---` fences, then a standard Markdown body. Frontmatter sets the type and options. Bullets become selectable items. `##` headings become compare sections.
+Optional YAML frontmatter between `---` fences, then a standard Markdown body. Bullets become selectable items. `##` headings become compare sections.
 
 ### Auto-inference (skip frontmatter for common cases)
 
@@ -72,7 +68,7 @@ This will affect live users.
 ```
 → `Simple but limited`
 
-With images: `- ![Sunset](/abs/path/sunset.png)`
+With images: `- ![Sunset](sunset.png)`
 
 ### pick_many — pick multiple options
 
@@ -88,7 +84,7 @@ multi: true
 ```
 → `- Unit tests` / `- E2E tests`
 
-Add `filter: true` for searchable lists with infinite scroll (good for >10 items).
+Add `filter: true` for searchable lists (good for >10 items).
 
 ### text — free-text input
 
@@ -113,6 +109,20 @@ actions: [Send, Rewrite, Skip]
 Dear Client, thank you for your patience.
 ```
 → `Send`
+
+### review_each — review items one by one
+
+```markdown
+---
+actions: [Approve, Reject, Skip]
+---
+# Review changes
+
+- Rename auth module
+- Add rate limiting
+- Drop legacy endpoint
+```
+→ `- Rename auth module: Approve` / `- Add rate limiting: Skip` / ...
 
 ### form — structured multi-field input
 
@@ -153,8 +163,6 @@ The quick brown fox jumps over the lazy dog.
 A swift auburn fox leaps across the sleepy hound.
 ```
 → `Original` or `Revised`
-
-Each `##` heading becomes a section panel.
 
 ### rank — drag to reorder
 
@@ -201,12 +209,12 @@ max: 5
 ```markdown
 ---
 type: file
-root: /Users/me/project
+root: ./src
 extensions: [json, yaml]
 ---
 # Pick a config file
 ```
-→ `/Users/me/project/config.json`
+→ `/absolute/path/to/src/config.json`
 
 Add `multi: true` for multiple selection.
 
@@ -226,8 +234,6 @@ Drop your image files here.
 ```
 → `/tmp/uploads/photo.png` (single) or `- /tmp/uploads/a.png` / `- /tmp/uploads/b.png` (multi)
 
-`dest` is required. Files are saved with sanitized names. Collisions get a timestamp suffix.
-
 ## When $ARGUMENTS is given
 
 Use the argument as context for what to prompt. Examples:
@@ -235,29 +241,11 @@ Use the argument as context for what to prompt. Examples:
 - `/promptui which branch to merge` → list git branches as options
 - `/promptui review this draft` → show content with approve/reject actions
 
-Infer sensible options from context. Use absolute paths in image options.
+Infer sensible options from context.
 
 ## Rules
 
 - Use `choose` for single pick, `pick_many` for multiple
 - Add `filter: true` for lists longer than ~10 items
 - Keep titles short — they're headings
-- The window opens automatically, closes on response, focus returns here
-- Always use absolute paths for images and file roots
-
-## Caching large pickers
-
-When building a picker from many files or a slow command (>~20 items), cache the markdown to avoid regeneration.
-
-```bash
-GIT_DIR=$(git rev-parse --git-dir 2>/dev/null)
-if [ -n "$GIT_DIR" ]; then
-  CACHE_DIR="$GIT_DIR/promptui-cache"
-else
-  HASH=$(pwd | shasum | cut -c1-8)
-  CACHE_DIR="/tmp/promptui-cache-$HASH"
-fi
-mkdir -p "$CACHE_DIR"
-```
-
-Never cache `confirm`, `review`, or `display` — they're contextual and cheap.
+- Paths (images, `root`, `dest`) can be relative to the .md file

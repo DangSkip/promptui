@@ -301,8 +301,8 @@
   .review-row:last-child { border-bottom: none; }
 
   .review-row img {
-    width: 80px;
-    height: 80px;
+    width: 96px;
+    height: 96px;
     object-fit: cover;
     border-radius: 6px;
     flex-shrink: 0;
@@ -576,8 +576,8 @@
   }
 
   .rank-row img {
-    width: 40px;
-    height: 40px;
+    width: 56px;
+    height: 56px;
     object-fit: cover;
     border-radius: 4px;
     flex-shrink: 0;
@@ -862,11 +862,62 @@
   }
 
   .dot.live { background: #4caf50; }
+
+  /* Lightbox — click-to-zoom for all images */
+  .lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .lightbox[hidden] { display: none; }
+
+  .lightbox-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.88);
+    cursor: zoom-out;
+  }
+
+  .lightbox-content {
+    position: relative;
+    max-width: 92vw;
+    max-height: 92vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .lightbox-content img {
+    max-width: 92vw;
+    max-height: 92vh;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+    cursor: zoom-out;
+  }
+
+  /* Zoom-in cursor hint on all prompt images */
+  .option-card img,
+  .rank-row img,
+  .review-row img,
+  .compare-card-body img {
+    cursor: zoom-in;
+  }
 </style>
 </head>
 <body>
 <div id="root">
   <p class="idle"><span class="dot" id="dot"></span><span id="status-text">Connecting…</span></p>
+</div>
+
+<div id="lightbox" class="lightbox" hidden>
+  <div class="lightbox-backdrop"></div>
+  <div class="lightbox-content">
+    <img id="lightbox-img" src="" alt="Zoomed image">
+  </div>
 </div>
 
 <script>
@@ -875,6 +926,12 @@ const dot = document.getElementById('dot');
 const statusText = document.getElementById('status-text');
 
 let selected = new Set();
+
+/** Build a /static/... URL for a local file path. Handles both absolute and relative paths. */
+function staticUrl(filePath) {
+  if (!filePath) return '';
+  return filePath.startsWith('/') ? '/static' + filePath : '/static/' + filePath;
+}
 
 function renderBody(text) {
   if (!text) return '';
@@ -1058,7 +1115,7 @@ function render(payload) {
         const row = document.createElement('div');
         row.className = 'rank-row';
         row.dataset.i = String(i);
-        const imgTag = item.image ? `<img src="/static${item.image}" alt="${esc(item.label)}">` : '';
+        const imgTag = item.image ? `<img src="${staticUrl(item.image)}" alt="${esc(item.label)}">` : '';
         row.innerHTML = `<span class="rank-handle">⠿</span><span class="rank-badge">${i + 1}</span>${imgTag}<span class="rank-label">${esc(item.label)}</span><span class="rank-arrows"><button data-dir="up" ${i === 0 ? 'disabled' : ''}>▲</button><button data-dir="down" ${i === items.length - 1 ? 'disabled' : ''}>▼</button></span>`;
 
         // Arrow buttons
@@ -1279,7 +1336,7 @@ function render(payload) {
     const decisions = {};
 
     const rows = payload.options.map((o, i) => {
-      const imgTag = o.image ? `<img src="/static${o.image}" alt="${esc(o.label)}" loading="lazy">` : '';
+      const imgTag = o.image ? `<img src="${staticUrl(o.image)}" alt="${esc(o.label)}" loading="lazy">` : '';
       const btns = actions.map(a =>
         `<button data-i="${i}" data-action="${esc(a)}">${esc(a)}</button>`
       ).join('');
@@ -1334,7 +1391,7 @@ function render(payload) {
     if (hasImages) {
       const cards = payload.options.map((o, i) => `
         <div class="option-card" data-i="${i}" data-label="${esc(o.label)}">
-          <img src="/static${o.image}" alt="${esc(o.label)}" loading="lazy">
+          <img src="${staticUrl(o.image)}" alt="${esc(o.label)}" loading="lazy">
           <div class="option-label">${esc(o.label)}</div>
         </div>`).join('');
 
@@ -1770,7 +1827,7 @@ function renderFilterable(payload) {
       const div = document.createElement('div');
       div.className = 'option-card' + (selected.has(o.label) ? ' selected' : '');
       div.dataset.label = o.label;
-      div.innerHTML = `<img src="/static${o.image}" alt="${esc(o.label)}" loading="lazy"><div class="option-label">${esc(o.label)}</div>`;
+      div.innerHTML = `<img src="${staticUrl(o.image)}" alt="${esc(o.label)}" loading="lazy"><div class="option-label">${esc(o.label)}</div>`;
       div.onclick = () => toggleItem(o.label, div);
       return div;
     } else {
@@ -1905,6 +1962,26 @@ function connect() {
 }
 
 connect();
+
+/* ── Lightbox: click any prompt image to zoom ── */
+(function() {
+  const lb = document.getElementById('lightbox');
+  const lbImg = document.getElementById('lightbox-img');
+
+  document.addEventListener('click', (e) => {
+    const img = e.target.closest('.option-card img, .rank-row img, .review-row img, .compare-card-body img');
+    if (!img) return;
+    e.stopPropagation();
+    lbImg.src = img.src;
+    lb.hidden = false;
+  });
+
+  lb.addEventListener('click', () => { lb.hidden = true; });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !lb.hidden) lb.hidden = true;
+  });
+})();
 </script>
 </body>
 </html>

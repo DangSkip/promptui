@@ -4,9 +4,8 @@
  * cli.ts — Markdown CLI for promptui
  *
  * Usage:
- *   promptui                  # no args → start server (backward compat)
- *   promptui workflow.md      # parse MD → post to server → print result
- *   cat workflow.md | promptui -   # read from stdin
+ *   promptui file.md           # parse MD → post to server → print result
+ *   cat file.md | promptui -   # read from stdin
  */
 
 import fs from 'fs';
@@ -14,7 +13,10 @@ import http from 'http';
 import path from 'path';
 import { spawn } from 'child_process';
 import parseMd from './parse-md';
+import { validatePayload } from './validate';
 import { Payload, ServerResponse } from './types';
+
+const VERSION = require('../package.json').version;
 
 const PORT_FILE = '/tmp/promptui.port';
 const POLL_INTERVAL_MS = 200;
@@ -62,7 +64,7 @@ async function ensureServer(): Promise<number> {
     if (port && await isServerAlive(port)) return port;
   }
 
-  throw new Error('Failed to start promptui server within 5s');
+  throw new Error(`Server failed to start within 5s.\n  Try: rm ${PORT_FILE} && promptui <file.md>`);
 }
 
 function postPayload(port: number, payload: Payload): Promise<ServerResponse> {
@@ -145,28 +147,82 @@ function readStdin(): Promise<string> {
   });
 }
 
+// --- Path resolution ---
+
+/**
+ * Resolve all path fields in a payload to absolute paths.
+ * baseDir is the directory of the source .md file, or CWD for stdin.
+ */
+function resolvePayloadPaths(payload: Payload, baseDir: string): Payload {
+  const p = { ...payload } as Record<string, unknown>;
+
+  // Resolve options[].image
+  if ('options' in payload && Array.isArray((payload as any).options)) {
+    p.options = ((payload as any).options as Array<{ label: string; image?: string }>).map(o => {
+      if (o.image && !path.isAbsolute(o.image)) {
+        return { ...o, image: path.resolve(baseDir, o.image) };
+      }
+      return o;
+    });
+  }
+
+  // Resolve root (file picker)
+  if ('root' in p && typeof p.root === 'string' && !path.isAbsolute(p.root as string)) {
+    p.root = path.resolve(baseDir, p.root as string);
+  }
+
+  // Resolve dest (upload)
+  if ('dest' in p && typeof p.dest === 'string' && !path.isAbsolute(p.dest as string)) {
+    p.dest = path.resolve(baseDir, p.dest as string);
+  }
+
+  return p as unknown as Payload;
+}
+
+// --- Help ---
+
+const HELP = `promptui v${VERSION} — browser UI prompts for Claude Code
+
+Usage:
+  promptui <file.md>    Show prompt defined in markdown file
+  promptui -            Read markdown from stdin
+
+Examples:
+  promptui /tmp/pick.md
+  echo '# Deploy? \\nThis affects prod.' | promptui -
+
+Docs: promptui SKILL.md or see .claude/skills/promptui/SKILL.md`;
+
 // --- Main ---
 
 async function main(): Promise<void> {
   const arg = process.argv[2];
 
-  // No args → start server in foreground (backward compat)
-  if (!arg) {
-    require('./server');
-    return;
+  // No args or help flag → print help, exit 0
+  if (!arg || arg === '--help' || arg === '-h') {
+    process.stdout.write(HELP + '\n');
+    process.exit(0);
+  }
+
+  if (arg === '--version' || arg === '-v') {
+    process.stdout.write(VERSION + '\n');
+    process.exit(0);
   }
 
   // Read input from file or stdin
   let raw: string;
+  let baseDir: string;
   if (arg === '-') {
     raw = await readStdin();
+    baseDir = process.cwd();
   } else {
     const filePath = path.resolve(arg);
     if (!fs.existsSync(filePath)) {
-      process.stderr.write(`promptui: file not found: ${arg}\n`);
+      process.stderr.write(`promptui: file not found: ${filePath}\n  (resolved from "${arg}")\n`);
       process.exit(1);
     }
     raw = fs.readFileSync(filePath, 'utf8');
+    baseDir = path.dirname(filePath);
   }
 
   // JSON passthrough if input starts with {, otherwise parse as markdown
@@ -181,6 +237,16 @@ async function main(): Promise<void> {
     }
   } else {
     payload = parseMd(raw);
+  }
+
+  // Resolve relative paths to absolute
+  payload = resolvePayloadPaths(payload, baseDir);
+
+  // Validate payload before sending
+  const error = validatePayload(payload);
+  if (error) {
+    process.stderr.write(`promptui: ${error}\n`);
+    process.exit(1);
   }
 
   // Ensure server is running
