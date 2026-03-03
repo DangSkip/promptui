@@ -1,6 +1,6 @@
 {
   "name": "@dangskipperms/promptui",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "description": "Browser-based UI prompts for Claude Code — image pickers, confirmations, reviews, checklists",
   "bin": {
     "promptui": "./dist/cli.js"
