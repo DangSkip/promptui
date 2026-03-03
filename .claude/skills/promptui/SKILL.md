@@ -260,4 +260,4 @@ Infer sensible options from context.
 - Use `choose` for single pick, `pick_many` for multiple
 - Add `filter: true` for lists longer than ~10 items
 - Paths (images, `root`, `dest`) can be relative to the .md file
-- If the result is `dismissed`, the user wants to talk instead of picking — return to conversation
+- If the result is `dismissed`, **stop and talk to the user**. They weren't happy with the choices or how they were presented. Ask what they'd prefer — don't just re-show the same prompt
