@@ -31,6 +31,9 @@ Write a Markdown file, run `promptui <file>`, get the result on stdout. A browse
 
 ```bash
 cat > /tmp/prompt.md << 'PROMPT'
+---
+type: choose
+---
 # Pick the homepage hero image
 
 - ![Ocean sunset](./images/sunset.png)
@@ -45,18 +48,23 @@ Paths (images, `root`, `dest`) can be relative to the .md file — they're resol
 
 ## Markdown format
 
-Optional YAML frontmatter between `---` fences, then a standard Markdown body. Bullets become selectable items. `##` headings become compare sections.
+Every prompt file has two parts:
 
-### Auto-inference (skip frontmatter for common cases)
+1. **Frontmatter** (between `---` fences) — always include this. Set `type:` and any config.
+2. **Body** — `#` title, body text, `- ` bullet items, `##` section headings.
 
-| Structure | Inferred type |
-|-----------|---------------|
-| Has bullet list | `choose` |
-| `multi: true` | `pick_many` |
-| `actions:` in frontmatter | `review` |
-| `placeholder:` in frontmatter | `text` |
-| Title + body text, no bullets | `confirm` |
-| Title only, no body | `display` |
+```
+---
+type: choose
+---
+# Title here
+
+Body text (markdown).
+
+- Bullet items become options
+```
+
+Always set `type:` explicitly. The available types and their frontmatter keys are listed below.
 
 ## Prompt types
 
@@ -65,6 +73,9 @@ Optional YAML frontmatter between `---` fences, then a standard Markdown body. B
 Best for: image grids, long searchable lists, multi-select with checkboxes.
 
 ```markdown
+---
+type: choose
+---
 # Which design direction?
 
 - ![Minimal](minimal.png)
@@ -72,7 +83,7 @@ Best for: image grids, long searchable lists, multi-select with checkboxes.
 - ![Playful](playful.png)
 ```
 
-- Add `multi: true` in frontmatter for multi-select
+- Use `type: pick_many` for multi-select (checkboxes)
 - Add `filter: true` for searchable lists (good for >10 items)
 - Image syntax: `- ![Label](path.png)`
 
@@ -123,6 +134,7 @@ Best for: drafts, generated content, diffs that need approval.
 
 ```markdown
 ---
+type: review
 actions: [Approve, Needs Changes, Reject]
 ---
 # PR #247: Add rate limiting
@@ -136,6 +148,7 @@ Best for: reviewing a list of changes, files, or suggestions individually.
 
 ```markdown
 ---
+type: review_each
 actions: [Approve, Reject, Skip]
 ---
 # Review proposed changes
@@ -198,6 +211,7 @@ Best for: long-form input with rich markdown context above it.
 
 ```markdown
 ---
+type: text
 placeholder: Describe the changes you want...
 ---
 # What should we change?
