@@ -144,6 +144,11 @@ app.get('/events', (req: Request, res: Response) => {
 
   req.on('close', () => {
     sseRes = null;
+    // If a prompt was waiting for a response, fail it immediately
+    if (pendingResolve) {
+      pendingResolve({ error: 'Browser window closed' });
+      pendingResolve = null;
+    }
     shutdownTimer = setTimeout(() => {
       console.log('Browser disconnected — shutting down.');
       try { fs.unlinkSync(PORT_FILE); } catch (_) {}

@@ -162,6 +162,20 @@
     color: #fff;
   }
 
+  .dismiss-link {
+    display: block;
+    text-align: center;
+    padding: 14px 0 4px;
+    font-size: 13px;
+    color: #888;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .dismiss-link:hover {
+    color: #b0b0b0;
+    text-decoration: underline;
+  }
+
   .image-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -1951,6 +1965,14 @@ function connect() {
       return;
     }
     render(payload);
+    // Add dismiss link to all interactive prompts
+    if (payload.type !== 'display') {
+      const link = document.createElement('a');
+      link.className = 'dismiss-link';
+      link.textContent = "let\u2019s rather talk about this";
+      link.onclick = () => respond({ dismissed: true });
+      root.appendChild(link);
+    }
   };
 
   es.onerror = () => {

@@ -94,6 +94,7 @@ function postPayload(port: number, payload: Payload): Promise<ServerResponse> {
  * Convert server JSON response → plain text for stdout.
  */
 function formatResponse(json: ServerResponse): { text: string; code: number } {
+  if ('dismissed' in json) return { text: 'dismissed', code: 0 };
   if ('error' in json) return { text: `error: ${json.error}`, code: 1 };
   if ('values' in json) {
     const lines = Object.entries(json.values).map(([key, val]) => {
