@@ -5,29 +5,27 @@ argument-hint: "[what to prompt for]"
 allowed-tools: Bash, Read, Glob, Grep
 ---
 
-## When to use this (and when NOT to)
+promptui opens a browser window. Only use it when the terminal can't do the job — images, complex forms, file browsing, side-by-side comparisons, batch review. For yes/no, short text choices, or simple messages, use the terminal.
 
-promptui opens a browser window. That's heavyweight. **Do not use it for things the terminal can do:**
+## Quick reference
 
-- Yes/no confirmation → use the terminal
-- Pick from 2-4 text options → use the terminal
-- Show a short message → use the terminal
-
-**Use promptui when you need what the terminal can't do:**
-
-- Visual choices with images (pick a design, screenshot, icon)
-- Side-by-side comparison of code, text, or content
-- Multi-field forms (text + dropdowns + toggles together)
-- Reviewing a batch of items with approve/reject/skip per item
-- File browsing with directory navigation
-- Drag-and-drop file uploads
-- Ranked ordering via drag-and-drop
-- Long filtered/searchable lists (50+ options)
-- Rich markdown content the user needs to read and act on
+| Type | Use when | Key frontmatter |
+|------|----------|-----------------|
+| `choose` | Picking from image options or large lists | `filter: true` for 10+ items |
+| `pick_many` | Multi-select with images or large lists | `filter: true` for 10+ items |
+| `compare` | Side-by-side code, text, or content | `##` headings become panels |
+| `form` | Mixed inputs: text + dropdowns + toggles | field syntax in bullets |
+| `review` | Read rich content, then decide | `actions: [Accept, Reject, ...]` |
+| `review_each` | Batch review items individually | `actions: [...]` + bullet items |
+| `rank` | Drag-to-reorder prioritization | bullet items |
+| `file` | Browse and pick files from a directory | `root:`, `extensions:`, `multi:` |
+| `upload` | Drag-and-drop file upload | `dest:`, `extensions:`, `multi:` |
+| `text` | Long-form input with rich context above | `placeholder:` |
+| `range` | Numeric slider | `min:`, `max:`, `step:`, `value:` |
 
 ## How it works
 
-Write a Markdown file, run `promptui <file>`, get the result on stdout. A browser window opens, the user interacts, the result prints, done.
+Write a Markdown file, run `promptui <file>`, get the result on stdout.
 
 ```bash
 cat > /tmp/prompt.md << 'PROMPT'
@@ -44,7 +42,7 @@ PROMPT
 CHOICE=$(promptui /tmp/prompt.md)
 ```
 
-Paths (images, `root`, `dest`) can be relative to the .md file — they're resolved automatically. If the user clicks "let's rather talk about this" at the bottom of any prompt, the result is `dismissed`.
+Paths (images, `root`, `dest`) can be relative to the .md file — they're resolved automatically. If the user clicks "let's rather talk about this", the result is `dismissed`.
 
 ## Markdown format
 
@@ -64,13 +62,11 @@ Body text (markdown).
 - Bullet items become options
 ```
 
-Always set `type:` explicitly. The available types and their frontmatter keys are listed below.
+Always set `type:` explicitly.
 
-## Prompt types
+## Prompt type details
 
-### choose / pick_many — visual option picker
-
-Best for: image grids, long searchable lists, multi-select with checkboxes.
+### choose / pick_many
 
 ```markdown
 ---
@@ -87,9 +83,7 @@ type: choose
 - Add `filter: true` for searchable lists (good for >10 items)
 - Image syntax: `- ![Label](path.png)`
 
-### compare — side-by-side content
-
-Best for: code diffs, text revisions, competing approaches.
+### compare
 
 ```markdown
 ---
@@ -108,9 +102,7 @@ O(n) time, O(n) space. Handles any input.
 
 Each `##` heading becomes a panel. User picks one.
 
-### form — structured multi-field input
-
-Best for: configuration with mixed input types, settings panels.
+### form
 
 ```markdown
 ---
@@ -128,9 +120,7 @@ type: form
 
 Field syntax: `Label (text)`, `Label (textarea)`, `Label (toggle)`, `Label: [A, B, C]`, `Label (type) = default`
 
-### review — read content and decide
-
-Best for: drafts, generated content, diffs that need approval.
+### review
 
 ```markdown
 ---
@@ -142,9 +132,7 @@ actions: [Approve, Needs Changes, Reject]
 **+89 / -12** across 4 files. Applies globally to /api/ — no per-user differentiation.
 ```
 
-### review_each — batch review items one by one
-
-Best for: reviewing a list of changes, files, or suggestions individually.
+### review_each
 
 ```markdown
 ---
@@ -159,9 +147,7 @@ actions: [Approve, Reject, Skip]
 - Migrate session store to Redis
 ```
 
-### rank — drag to reorder
-
-Best for: prioritization, ordering tasks or features.
+### rank
 
 ```markdown
 ---
@@ -176,9 +162,7 @@ type: rank
 - Debt: replace Moment.js with date-fns
 ```
 
-### file — browse and select files
-
-Best for: picking files from a directory tree with navigation.
+### file
 
 ```markdown
 ---
@@ -190,9 +174,7 @@ multi: true
 # Select files to refactor
 ```
 
-### upload — drag-and-drop file upload
-
-Best for: getting images, documents, or assets from the user.
+### upload
 
 ```markdown
 ---
@@ -205,9 +187,7 @@ maxSize: 10485760
 # Upload design assets
 ```
 
-### text — free-text input
-
-Best for: long-form input with rich markdown context above it.
+### text
 
 ```markdown
 ---
@@ -219,7 +199,7 @@ placeholder: Describe the changes you want...
 Here's the current implementation with the relevant context and constraints that inform what's possible.
 ```
 
-### range — numeric slider
+### range
 
 ```markdown
 ---
@@ -232,19 +212,6 @@ value: 50
 # Confidence level
 ```
 
-### rating — stars or thumbs
-
-```markdown
----
-type: rating
-style: stars
-max: 5
----
-# Rate the generated output
-```
-
-Use `style: thumbs` for up/down instead of stars.
-
 ## When $ARGUMENTS is given
 
 Use the argument as context for what to prompt. Examples:
@@ -256,8 +223,6 @@ Infer sensible options from context.
 
 ## Rules
 
-- **Do not use promptui for simple choices** — if the terminal can handle it, use the terminal
-- Use `choose` for single pick, `pick_many` for multiple
 - Add `filter: true` for lists longer than ~10 items
 - Paths (images, `root`, `dest`) can be relative to the .md file
 - If the result is `dismissed`, **stop and talk to the user**. They weren't happy with the choices or how they were presented. Ask what they'd prefer — don't just re-show the same prompt
